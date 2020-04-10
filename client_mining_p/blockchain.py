@@ -53,6 +53,15 @@ class Blockchain(object):
         # Return the new block
         return block
 
+    def new_transaction(self, sender, recipient, amount):
+        self.current_transactions.append({
+            'sender': sender,
+            'recipient': recipient,
+            'amount': amount
+        })
+
+        return self.last_block['index'] + 1
+
     def hash(self, block):
         """
         Creates a SHA-256 hash of a Block
@@ -143,7 +152,16 @@ def mine():
     previous_hash = blockchain.hash(blockchain.last_block)
     block = blockchain.new_block(data['proof'], previous_hash)
 
+
     if data['proof'] and data['id']:
+
+        proof = data['proof']
+
+        last_block = blockchain.last_block
+        last_block_string = json.dumps(last_block, sort_keys=True)
+
+        if blockchain.valid_proof(last_block_string, proof):
+            blockchain.new_transaction(sender='0', recipient=data['id'], amount= 1)
 
         response = {
             'message': "New Block Forged",
@@ -172,6 +190,21 @@ def last_block():
     response = {
         'last_block': blockchain.chain[-1]
     }
+    return jsonify(response), 200
+
+@app.route('/transactions/new', methods=['POST'])
+def new_transaction():
+    values = request.get_json()
+
+    required = ['sender', 'recipient', 'amount']
+    if not all(k in values for k in required):
+        return 'Missing Values', 400
+
+    index = blockchain.new_transaction(values['sender'],
+                                       values['recipient'],
+                                       values['amount'])
+
+    response = {'message': f"Transcation will be added to Block {index}"}
     return jsonify(response), 200
 
 
